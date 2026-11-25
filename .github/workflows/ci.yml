@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Build (unsigned)
+        run: SIGN=0 make build
+
+      - name: Render demo screenshots
+        # Catches layout crashes (e.g. SwiftUI runtime errors) in every widget size.
+        run: scripts/preview.sh build/ci-screenshots
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: build/ci-screenshots/*.png
