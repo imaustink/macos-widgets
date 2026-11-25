@@ -41,6 +41,7 @@ Shared/      Compiled into both targets.
   Links.swift             kubewidget:// URL builders
   Format.swift            number formatting
 tools/preview/   Offline renderer used by `make preview` / `make screenshots`
+tools/icon/      Draws the app icon (`make icon`)
 scripts/         build, install, uninstall and preview scripts behind the Makefile
 ```
 
