@@ -60,26 +60,50 @@ func resolveSSH(_ alias: String) async -> SSHHost? {
                    jump: jump)
 }
 
-/// TCP connect to host:port. Returns latency in ms, or nil if unreachable within the timeout.
-func tcpProbe(host: String, port: Int, timeout: TimeInterval = 2.5) async -> Int? {
-    guard let p = NWEndpoint.Port(rawValue: UInt16(clamping: port)) else { return nil }
+/// Outcome of a TCP probe: latency when the port answered, otherwise a short reason why not.
+struct TCPProbeResult: Sendable {
+    var latencyMs: Int?
+    var reason: String?
+}
+
+/// TCP connect to host:port. Returns latency in ms, or why the connection couldn't be made.
+func tcpProbe(host: String, port: Int, timeout: TimeInterval = 2.5) async -> TCPProbeResult {
+    guard let p = NWEndpoint.Port(rawValue: UInt16(clamping: port)) else { return TCPProbeResult(reason: "bad port") }
     let conn = NWConnection(host: NWEndpoint.Host(host), port: p, using: .tcp)
     let start = Date()
     return await withCheckedContinuation { cont in
         let once = ResumeOnce()
-        let finish: @Sendable (Int?) -> Void = { v in
+        let finish: @Sendable (TCPProbeResult) -> Void = { v in
             if once.claim() { conn.cancel(); cont.resume(returning: v) }
         }
         conn.stateUpdateHandler = { state in
             switch state {
-            case .ready: finish(Int(Date().timeIntervalSince(start) * 1000))
-            case .failed, .cancelled: finish(nil)
-            case .waiting: finish(nil)   // no route / refused
+            case .ready: finish(TCPProbeResult(latencyMs: Int(Date().timeIntervalSince(start) * 1000)))
+            case .failed(let e), .waiting(let e): finish(TCPProbeResult(reason: probeFailure(e, path: conn.currentPath)))
+            case .cancelled: finish(TCPProbeResult(reason: "timeout"))
             default: break
             }
         }
         conn.start(queue: .global())
-        DispatchQueue.global().asyncAfter(deadline: .now() + timeout) { finish(nil) }
+        DispatchQueue.global().asyncAfter(deadline: .now() + timeout) { finish(TCPProbeResult(reason: "timeout")) }
+    }
+}
+
+/// Why a probe failed, in the same words the cluster widgets use. "blocked" means this Mac
+/// stopped the connection (Local Network privacy), as opposed to the host not answering.
+private func probeFailure(_ error: NWError, path: NWPath?) -> String {
+    if path?.unsatisfiedReason == .localNetworkDenied { return "blocked" }
+    switch error {
+    case .dns: return "DNS failed"
+    case .posix(let code):
+        switch code {
+        case .ECONNREFUSED: return "refused"
+        case .EHOSTUNREACH, .ENETUNREACH, .ENETDOWN, .EHOSTDOWN: return "no route"
+        case .ETIMEDOUT: return "timeout"
+        case .EPERM, .EACCES: return "blocked"
+        default: return "down"
+        }
+    default: return "down"
     }
 }
 
@@ -127,8 +151,10 @@ final class SSHMonitor: ObservableObject {
                 g.addTask {
                     var h = h
                     if h.jump == nil {
-                        h.latencyMs = await tcpProbe(host: h.hostname, port: h.port)
-                        h.reachable = h.latencyMs != nil
+                        let r = await tcpProbe(host: h.hostname, port: h.port)
+                        h.latencyMs = r.latencyMs
+                        h.reachable = r.latencyMs != nil
+                        h.reason = r.reason
                     }
                     return (i, h)
                 }
@@ -143,13 +169,14 @@ final class SSHMonitor: ObservableObject {
             var h = h
             if let j = h.jump, let b = byAlias[j.split(separator: ",").first.map(String.init) ?? j] {
                 h.reachable = b.reachable
+                h.reason = b.reason
             }
             return h
         }
 
         Stores.ssh.save(SSHFile(updated: .now, hosts: hosts))
-        // Latency jitters every poll; only reload the widget when the up/down picture changes.
-        let sig = hosts.map { "\($0.alias)=\($0.reachable.map { $0 ? "1" : "0" } ?? "?")" }.joined(separator: ",")
+        // Latency jitters every poll; only reload the widget when the up/down picture (or why) changes.
+        let sig = hosts.map { "\($0.alias)=\($0.reachable.map { $0 ? "1" : "0" } ?? "?")\($0.reason ?? "")" }.joined(separator: ",")
         if force || sig != lastSignature {
             lastSignature = sig
             WidgetCenter.shared.reloadTimelines(ofKind: "SSH")

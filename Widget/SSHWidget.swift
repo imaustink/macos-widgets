@@ -213,7 +213,7 @@ struct SSHRow: View {
             if let j = host.jump {
                 Text("↪\(j)")
             } else if host.reachable == false {
-                Text("down").foregroundStyle(.red)
+                Text(host.reason ?? "down").foregroundStyle(.red)
             } else if let ms = host.latencyMs {
                 Text(verbatim: "\(ms)ms")
             }

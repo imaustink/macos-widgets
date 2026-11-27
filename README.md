@@ -93,6 +93,16 @@ If you've already deleted the cloned repo, the manual equivalent is: quit KubeWi
 | `unauthorized` / `forbidden` | Your credentials for that context were rejected. |
 | CPU/MEM `—` | The cluster has no metrics-server, so `kubectl top` returns nothing. |
 
+SSH hosts that don't answer show one of these instead of latency:
+
+| Shown | Meaning |
+|---|---|
+| `blocked` | macOS stopped the connection before it left your Mac, usually the Local Network permission. See [Troubleshooting](#troubleshooting). |
+| `no route` | No network path to the host (VPN down, wrong network). On a LAN host this can also be the Local Network permission. |
+| `timeout` | Nothing answered within 2.5 seconds: the host is off, or a firewall is dropping the connection. |
+| `refused` | The host is up but nothing is listening on its SSH port. |
+| `DNS failed` | The hostname didn't resolve. |
+
 ## How it works
 
 KubeWidget is two parts, because widgets are sandboxed and can't run commands:

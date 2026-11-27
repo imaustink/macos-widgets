@@ -123,7 +123,7 @@ enum Demo {
         SSHHost(alias: "node1", hostname: "10.0.0.21", user: "ubuntu", port: 22, reachable: true, latencyMs: 2),
         SSHHost(alias: "node2", hostname: "10.0.0.22", user: "ubuntu", port: 22, reachable: true, latencyMs: 3),
         SSHHost(alias: "node3", hostname: "10.0.0.23", user: "ubuntu", port: 22, reachable: true, latencyMs: 2),
-        SSHHost(alias: "node4", hostname: "10.0.0.24", user: "ubuntu", port: 22, reachable: false),
+        SSHHost(alias: "node4", hostname: "10.0.0.24", user: "ubuntu", port: 22, reachable: false, reason: "timeout"),
         SSHHost(alias: "node5", hostname: "10.0.0.25", user: "ubuntu", port: 22, reachable: true, latencyMs: 3),
         SSHHost(alias: "pi-hole", hostname: "10.0.0.53", user: "pi", port: 22, reachable: true, latencyMs: 4),
         SSHHost(alias: "printer", hostname: "printer.local", user: "pi", port: 22, reachable: true, latencyMs: 9),
