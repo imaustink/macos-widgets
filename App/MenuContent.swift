@@ -42,7 +42,7 @@ struct MenuContent: View {
         if !ssh.hosts.isEmpty {
             Menu("SSH") {
                 ForEach(ssh.hosts) { h in
-                    Button("\(h.reachable.map { $0 ? "🟢" : "🔴" } ?? "⚪️")  \(h.alias)  —  \(h.target)") { launchSSH(h.alias) }
+                    Button("\(h.reachable.map { $0 ? "🟢" : "🔴" } ?? "⚪️")  \(h.alias)  —  \(h.target)\(h.reachable == false ? "  (\(h.reason ?? "down"))" : "")") { launchSSH(h.alias) }
                 }
             }
         }

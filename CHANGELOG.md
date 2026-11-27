@@ -5,6 +5,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ## Unreleased
 
 - App icon, so KubeWidget is no longer blank in the widget gallery.
+- SSH widget and menu say why a host is unreachable (`timeout`, `refused`, `no route`, `DNS failed`, or `blocked` when macOS stopped the connection) instead of a bare `down`.
 - Clicking a cluster or namespace without k9s installed opens a terminal switched to that context (`kubectl config use-context`) instead of failing.
 
 ## 1.0.0
